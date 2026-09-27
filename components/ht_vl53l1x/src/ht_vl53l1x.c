@@ -10,6 +10,11 @@ const uint8_t vl53l1x_default_configuration[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+#define VL53L1X_REG_SYSTEM_MODE_START      0x0087
+#define VL53L1X_REG_GPIO_TIO_HV_STATUS     0x0031
+#define VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR 0x0086
+#define VL53L1X_REG_RESULT_FINAL_RANGE     0x0096
+
 esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev, i2c_port_t port) {
     dev->port = port;
 
@@ -24,3 +29,49 @@ esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev, i2c_port_t port) {
 
     return err;
 }
+
+esp_err_t ht_vl53l1x_start_ranging(ht_vl53l1x_dev_t *dev) {
+    uint8_t start_cmd = 0x40;
+    return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_MODE_START, &start_cmd, 1);
+}
+
+esp_err_t ht_vl53l1x_check_data_ready(ht_vl53l1x_dev_t *dev, uint8_t *is_ready) {
+    uint8_t status = 0;
+    esp_err_t err = ht_i2c_read_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_GPIO_TIO_HV_STATUS, &status, 1);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    status = status & 0x01;
+    if(status == 0) {
+        *is_ready = 1;
+    }
+    else {
+        *is_ready = 0;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t ht_vl53l1x_det_distance(ht_vl53l1x_dev_t *dev, uint16_t *distance) {
+    uint8_t data[2] = {0, 0};
+
+    esp_err_t err = ht_i2c_read_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RESULT_FINAL_RANGE, data, 2);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    *distance = (data[0] << 8) | data[1];
+    return ESP_OK;
+}
+
+esp_err_t ht_vl53l1x_clear_interrupt(ht_vl53l1x_dev_t *dev) {
+    uint8_t clear_cmd = 0x01;
+    return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR, &clear_cmd, 1);
+}
+
+
+
+
+
+
