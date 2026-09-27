@@ -39,6 +39,7 @@ esp_err_t ht_i2c_write_reg16(i2c_port_t port, uint8_t dev_addr, uint16_t reg_add
 
     return err;
 }
+
 esp_err_t ht_i2c_read_reg16(i2c_port_t port, uint8_t dev_addr, uint16_t reg_addr, uint8_t *data, size_t len) {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);

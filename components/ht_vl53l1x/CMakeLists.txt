@@ -1,0 +1,1 @@
+idf_component_register(SRCS "src/ht_vl53l1x.c" INCLUDE_DIRS "include" REQUIRES ht_i2c)
