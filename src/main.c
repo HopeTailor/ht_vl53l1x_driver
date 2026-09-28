@@ -58,8 +58,6 @@ void app_main(void) {
             ht_vl53l1x_clear_interrupt(&dev);
             ESP_LOGI(TAG, "Distance: %u mm", distance_mm);
         }
-
         vTaskDelay(10);
     }
-    
 }
