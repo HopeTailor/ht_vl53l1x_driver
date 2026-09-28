@@ -17,6 +17,11 @@ const uint8_t vl53l1x_default_configuration[] = {
 #define VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD   0x006C
 #define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_A_HI 0x005E
 #define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI 0x0061
+#define VL53L1X_REG_PHASECAL_CONFIG_TIMEOUT_MACROP   0x004B
+#define VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_A      0x0063
+#define VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_B      0x0069
+#define VL53L1X_REG_SD_CONFIG_QUANTIFIER             0x0078
+#define VL53L1X_REG_SD_CONFIG_INITIAL_PHASE_REF      0x0079
 
 esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
    
@@ -28,6 +33,11 @@ esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
 
     uint8_t vhv_config = 0x01;
     err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, 0x002E, &vhv_config, 1);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    err = ht_vl53l1x_set_distance_mode(dev);
     if(err != ESP_OK) {
         return err;
     }
@@ -81,6 +91,43 @@ esp_err_t ht_vl53l1x_clear_interrupt(ht_vl53l1x_dev_t *dev) {
     return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR, &clear_cmd, 1);
 }
 
+static esp_err_t ht_vl53l1x_set_distance_mode(ht_vl53l1x_dev_t *dev) {
+    uint8_t mode = dev->distance_mode;
+
+    uint8_t phasecal = 0, 
+    vcsel_a = 0, 
+    vcsel_b = 0, 
+    sd_quant = 0, 
+    sd_phase = 0;
+
+    if(mode == 0) {
+        phasecal = 0x14;
+        vcsel_a = 0x07;
+        vcsel_b = 0x05;
+        sd_quant = 0x02;
+        sd_phase = 0x06;
+    }
+    else if(mode == 1) {
+        phasecal = 0x0A;
+        vcsel_a = 0x0F;
+        vcsel_b = 0x0D;
+        sd_quant = 0x01;
+        sd_phase = 0x09;
+    }
+    else {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    esp_err_t err;
+    err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_PHASECAL_CONFIG_TIMEOUT_MACROP, &phasecal, 1);
+    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_A, &vcsel_a, 1);
+    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_B, &vcsel_b, 1);
+    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SD_CONFIG_QUANTIFIER, &sd_quant, 1);
+    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SD_CONFIG_INITIAL_PHASE_REF, &sd_phase, 1);
+
+    return err;
+}
+
 static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev) {
     if(dev->timing_budget_ms < 20) {
         return ESP_ERR_INVALID_ARG;
@@ -93,8 +140,18 @@ static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev) {
     uint32_t phase_a_us = active_budget_us / 2;
     uint32_t phase_b_us = active_budget_us - phase_a_us;
 
-    uint32_t macro_a = (phase_a_us * 1000) / 2070;
-    uint32_t macro_b = (phase_b_us * 1000) / 2070;
+    uint32_t clk_a, clk_b;
+    if(dev->distance_mode == 0) {
+        clk_a = 1140;
+        clk_b = 1030;
+    }
+    else {
+        clk_a = 2070;
+        clk_b = clk_a;
+    }
+
+    uint32_t macro_a = (phase_a_us * 1000) / clk_a;
+    uint32_t macro_b = (phase_b_us * 1000) / clk_b;
 
     uint16_t a_hi = ht_vl53l1x_encode_timeout(macro_a);
     uint16_t b_hi = ht_vl53l1x_encode_timeout(macro_b);
@@ -139,6 +196,10 @@ static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev) {
 
     return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD, data, 4);
 }
+
+
+
+
 
 
 
