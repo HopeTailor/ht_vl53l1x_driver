@@ -9,6 +9,9 @@ typedef struct {
     uint8_t distance_mode;
     uint16_t timing_budget_ms;
     uint32_t inter_measurement_ms;
+    uint8_t roi_width;
+    uint8_t roi_height;
+    uint8_t roi_center;
 } ht_vl53l1x_dev_t;
 
 esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev);
@@ -27,7 +30,7 @@ static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev);
 
 static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev);
 
-
+static esp_err_t ht_vl53l1x_set_roi(ht_vl53l1x_dev_t *dev);
 
 
 

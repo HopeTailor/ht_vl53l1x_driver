@@ -10,18 +10,20 @@ const uint8_t vl53l1x_default_configuration[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-#define VL53L1X_REG_SYSTEM_MODE_START                0x0087
-#define VL53L1X_REG_GPIO_TIO_HV_STATUS               0x0031
-#define VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR           0x0086
-#define VL53L1X_REG_RESULT_FINAL_RANGE               0x0096
-#define VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD   0x006C
-#define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_A_HI 0x005E
-#define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI 0x0061
-#define VL53L1X_REG_PHASECAL_CONFIG_TIMEOUT_MACROP   0x004B
-#define VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_A      0x0063
-#define VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_B      0x0069
-#define VL53L1X_REG_SD_CONFIG_QUANTIFIER             0x0078
-#define VL53L1X_REG_SD_CONFIG_INITIAL_PHASE_REF      0x0079
+#define VL53L1X_REG_SYSTEM_MODE_START                        0x0087
+#define VL53L1X_REG_GPIO_TIO_HV_STATUS                       0x0031
+#define VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR                   0x0086
+#define VL53L1X_REG_RESULT_FINAL_RANGE                       0x0096
+#define VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD           0x006C
+#define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_A_HI         0x005E
+#define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI         0x0061
+#define VL53L1X_REG_PHASECAL_CONFIG_TIMEOUT_MACROP           0x004B
+#define VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_A              0x0063
+#define VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_B              0x0069 
+#define VL53L1X_REG_SD_CONFIG_QUANTIFIER                     0x0078
+#define VL53L1X_REG_SD_CONFIG_INITIAL_PHASE_REF              0x0079
+#define VL53L1X_REG_ROI_CONFIG_USER_ROI_CENTRE_SPAD          0x007F
+#define VL53L1X_REG_ROI_CONFIG_USER_ROI_REQUESTED_RESOLUTION 0x007E
 
 esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
    
@@ -38,6 +40,11 @@ esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
     }
 
     err = ht_vl53l1x_set_distance_mode(dev);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    err = ht_vl53l1x_set_roi(dev);
     if(err != ESP_OK) {
         return err;
     }
@@ -197,7 +204,21 @@ static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev) {
     return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD, data, 4);
 }
 
+static esp_err_t ht_vl53l1x_set_roi(ht_vl53l1x_dev_t *dev) {
+    if(dev->roi_height < 4 || dev->roi_width < 4 || dev->roi_height > 16 || dev->roi_width > 16) {
+        return ESP_ERR_INVALID_ARG;
+    }
 
+    uint8_t resolution = ((dev->roi_height - 1) << 4) | (dev->roi_width - 1);
+    uint8_t center = dev->roi_center;
+
+    esp_err_t err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_ROI_CONFIG_USER_ROI_CENTRE_SPAD, &center, 1);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_ROI_CONFIG_USER_ROI_REQUESTED_RESOLUTION, &resolution, 1);
+}
 
 
 
