@@ -135,6 +135,21 @@ static esp_err_t ht_vl53l1x_set_distance_mode(ht_vl53l1x_dev_t *dev) {
     return err;
 }
 
+static uint16_t ht_vl53l1x_encode_timeout(uint32_t timeout_macro_clks) {
+    uint32_t ls_byte = 0;
+    uint16_t ms_byte = 0;
+
+    if(timeout_macro_clks > 0) {
+        ls_byte = timeout_macro_clks - 1;
+        while ((ls_byte & 0xFFFFFF00) > 0) {
+            ls_byte = ls_byte >> 1;
+            ms_byte++;
+        }
+        return (ms_byte << 8) | (uint16_t)(ls_byte & 0xFF);
+    }
+    return 0;
+}
+
 static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev) {
     if(dev->timing_budget_ms < 20) {
         return ESP_ERR_INVALID_ARG;
@@ -170,23 +185,8 @@ static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev) {
     }
 
     uint8_t data_b[2] = { (uint8_t)(b_hi >> 8), (uint8_t)(b_hi & 0xFF)};
-    esp_err_t err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI, data_b, 2);
+    err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI, data_b, 2);
     return err;
-}
-
-static uint16_t ht_vl53l1x_encode_timeout(uint32_t timeout_macro_clks) {
-    uint32_t ls_byte = 0;
-    uint16_t ms_byte = 0;
-
-    if(timeout_macro_clks > 0) {
-        ls_byte = timeout_macro_clks - 1;
-        while ((ls_byte & 0xFFFFFF00) > 0) {
-            ls_byte = ls_byte >> 1;
-            ms_byte++;
-        }
-        return (ms_byte << 8) | (uint16_t)(ls_byte & 0xFF);
-    }
-    return 0;
 }
 
 static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev) {

@@ -24,13 +24,3 @@ esp_err_t ht_vl53l1x_get_distance(ht_vl53l1x_dev_t *dev, uint16_t *distance);
 
 esp_err_t ht_vl53l1x_clear_interrupt(ht_vl53l1x_dev_t *dev);
 
-static esp_err_t ht_vl53l1x_set_distance_mode(ht_vl53l1x_dev_t *dev);
-
-static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev);
-
-static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev);
-
-static esp_err_t ht_vl53l1x_set_roi(ht_vl53l1x_dev_t *dev);
-
-
-

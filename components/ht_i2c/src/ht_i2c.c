@@ -34,7 +34,7 @@ esp_err_t ht_i2c_write_reg16(i2c_port_t port, uint8_t dev_addr, uint16_t reg_add
 
     i2c_master_stop(cmd);
 
-    esp_err_t err = i2c_master_cmd_begin(port, cmd, I2C_TIMEOUT_MS);
+    esp_err_t err = i2c_master_cmd_begin(port, cmd, I2C_TIMEOUT_MS / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
 
     return err;
