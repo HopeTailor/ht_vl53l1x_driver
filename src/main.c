@@ -6,24 +6,27 @@
 
 #define I2C_MASTER_SDA 21
 #define I2C_MASTER_SCL 22
-#define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ 400000
 
 static const char *TAG = "VL53L1X";
 
 void app_main(void) {
     ESP_LOGI(TAG, "Initializing I2C Master...");
+    i2c_master_bus_handle_t bus_handle;
 
-    esp_err_t err = ht_i2c_init(I2C_MASTER_NUM, I2C_MASTER_SDA, I2C_MASTER_SCL, I2C_MASTER_FREQ_HZ);
+    esp_err_t err = ht_i2c_bus_init(I2C_MASTER_SDA, I2C_MASTER_SCL, &bus_handle);
     if(err != ESP_OK) {
         ESP_LOGE(TAG, "I2C Initialization Failed!");
         return;
     }
 
+    ESP_LOGI(TAG, "Adding VL53L1X to I2C Bus...");
+    i2c_master_dev_handle_t vl53l1x_handle;
+    err = ht_i2c_add_device(bus_handle, VL53L1X_ADDR, I2C_MASTER_FREQ_HZ, &vl53l1x_handle);
     ESP_LOGI(TAG, "Configuring VL53L1X Sensor...");
 
     ht_vl53l1x_dev_t dev = {
-        .port = I2C_MASTER_NUM,
+        .i2c_dev = vl53l1x_handle,
         .distance_mode = 1,        
         .timing_budget_ms = 50,       
         .inter_measurement_ms = 100,  

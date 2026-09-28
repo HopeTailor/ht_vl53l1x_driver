@@ -5,7 +5,7 @@
 #define VL53L1X_ADDR 0x29
 
 typedef struct {
-    i2c_port_t port;
+    i2c_master_dev_handle_t i2c_dev;
     uint8_t distance_mode;
     uint16_t timing_budget_ms;
     uint32_t inter_measurement_ms;

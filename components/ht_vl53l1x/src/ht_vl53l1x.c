@@ -53,11 +53,11 @@ static esp_err_t ht_vl53l1x_set_distance_mode(ht_vl53l1x_dev_t *dev) {
     }
 
     esp_err_t err;
-    err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_PHASECAL_CONFIG_TIMEOUT_MACROP, &phasecal, 1);
-    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_A, &vcsel_a, 1);
-    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_B, &vcsel_b, 1);
-    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SD_CONFIG_QUANTIFIER, &sd_quant, 1);
-    err |= ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SD_CONFIG_INITIAL_PHASE_REF, &sd_phase, 1);
+    err = ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_PHASECAL_CONFIG_TIMEOUT_MACROP, &phasecal, 1);
+    err |= ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_A, &vcsel_a, 1);
+    err |= ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_RANGE_CONFIG_VCSEL_PERIOD_B, &vcsel_b, 1);
+    err |= ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_SD_CONFIG_QUANTIFIER, &sd_quant, 1);
+    err |= ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_SD_CONFIG_INITIAL_PHASE_REF, &sd_phase, 1);
 
     return err;
 }
@@ -106,13 +106,13 @@ static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev) {
     uint16_t b_hi = ht_vl53l1x_encode_timeout(macro_b);
 
     uint8_t data_a[2] = { (uint8_t)(a_hi >> 8), (uint8_t)(a_hi & 0xFF)};
-    esp_err_t err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_A_HI, data_a, 2);
+    esp_err_t err = ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_A_HI, data_a, 2);
     if(err != ESP_OK) {
         return err;
     }
 
     uint8_t data_b[2] = { (uint8_t)(b_hi >> 8), (uint8_t)(b_hi & 0xFF)};
-    err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI, data_b, 2);
+    err = ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI, data_b, 2);
     return err;
 }
 
@@ -128,7 +128,7 @@ static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev) {
     data[2] = (uint8_t)((clock_pll >> 8) & 0xFF);
     data[3] = (uint8_t)(clock_pll & 0xFF);
 
-    return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD, data, 4);
+    return ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD, data, 4);
 }
 
 static esp_err_t ht_vl53l1x_set_roi(ht_vl53l1x_dev_t *dev) {
@@ -139,24 +139,24 @@ static esp_err_t ht_vl53l1x_set_roi(ht_vl53l1x_dev_t *dev) {
     uint8_t resolution = ((dev->roi_height - 1) << 4) | (dev->roi_width - 1);
     uint8_t center = dev->roi_center;
 
-    esp_err_t err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_ROI_CONFIG_USER_ROI_CENTRE_SPAD, &center, 1);
+    esp_err_t err = ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_ROI_CONFIG_USER_ROI_CENTRE_SPAD, &center, 1);
     if(err != ESP_OK) {
         return err;
     }
 
-    return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_ROI_CONFIG_USER_ROI_REQUESTED_RESOLUTION, &resolution, 1);
+    return ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_ROI_CONFIG_USER_ROI_REQUESTED_RESOLUTION, &resolution, 1);
 }
 
 esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
    
-    esp_err_t err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR,  0x002D, vl53l1x_default_configuration, sizeof(vl53l1x_default_configuration));
+    esp_err_t err = ht_i2c_write_reg16(dev->i2c_dev, 0x002D, vl53l1x_default_configuration, sizeof(vl53l1x_default_configuration));
 
     if(err != ESP_OK) {
         return err;
     }
 
     uint8_t vhv_config = 0x01;
-    err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, 0x002E, &vhv_config, 1);
+    err = ht_i2c_write_reg16(dev->i2c_dev, 0x002E, &vhv_config, 1);
     if(err != ESP_OK) {
         return err;
     }
@@ -182,12 +182,12 @@ esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
 
 esp_err_t ht_vl53l1x_start_ranging(ht_vl53l1x_dev_t *dev) {
     uint8_t start_cmd = 0x40;
-    return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_MODE_START, &start_cmd, 1);
+    return ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_SYSTEM_MODE_START, &start_cmd, 1);
 }
 
 esp_err_t ht_vl53l1x_check_data_ready(ht_vl53l1x_dev_t *dev, uint8_t *is_ready) {
     uint8_t status = 0;
-    esp_err_t err = ht_i2c_read_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_GPIO_TIO_HV_STATUS, &status, 1);
+    esp_err_t err = ht_i2c_read_reg16(dev->i2c_dev, VL53L1X_REG_GPIO_TIO_HV_STATUS, &status, 1);
     if(err != ESP_OK) {
         return err;
     }
@@ -206,7 +206,7 @@ esp_err_t ht_vl53l1x_check_data_ready(ht_vl53l1x_dev_t *dev, uint8_t *is_ready) 
 esp_err_t ht_vl53l1x_get_distance(ht_vl53l1x_dev_t *dev, uint16_t *distance) {
     uint8_t data[2] = {0, 0};
 
-    esp_err_t err = ht_i2c_read_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RESULT_FINAL_RANGE, data, 2);
+    esp_err_t err = ht_i2c_read_reg16(dev->i2c_dev, VL53L1X_REG_RESULT_FINAL_RANGE, data, 2);
     if(err != ESP_OK) {
         return err;
     }
@@ -217,7 +217,7 @@ esp_err_t ht_vl53l1x_get_distance(ht_vl53l1x_dev_t *dev, uint16_t *distance) {
 
 esp_err_t ht_vl53l1x_clear_interrupt(ht_vl53l1x_dev_t *dev) {
     uint8_t clear_cmd = 0x01;
-    return ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR, &clear_cmd, 1);
+    return ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR, &clear_cmd, 1);
 }
 
 
