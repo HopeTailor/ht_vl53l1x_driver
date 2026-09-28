@@ -10,11 +10,13 @@ const uint8_t vl53l1x_default_configuration[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-#define VL53L1X_REG_SYSTEM_MODE_START              0x0087
-#define VL53L1X_REG_GPIO_TIO_HV_STATUS             0x0031
-#define VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR         0x0086
-#define VL53L1X_REG_RESULT_FINAL_RANGE             0x0096
-#define VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD 0x006C
+#define VL53L1X_REG_SYSTEM_MODE_START                0x0087
+#define VL53L1X_REG_GPIO_TIO_HV_STATUS               0x0031
+#define VL53L1X_REG_SYSTEM_INTERRUPT_CLEAR           0x0086
+#define VL53L1X_REG_RESULT_FINAL_RANGE               0x0096
+#define VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD   0x006C
+#define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_A_HI 0x005E
+#define VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI 0x0061
 
 esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
    
@@ -80,7 +82,47 @@ esp_err_t ht_vl53l1x_clear_interrupt(ht_vl53l1x_dev_t *dev) {
 }
 
 static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev) {
-    return ESP_OK;
+    if(dev->timing_budget_ms < 20) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint32_t budget_us = dev->timing_budget_ms * 1000;
+
+    uint32_t active_budget_us = budget_us - 4300;
+
+    uint32_t phase_a_us = active_budget_us / 2;
+    uint32_t phase_b_us = active_budget_us - phase_a_us;
+
+    uint32_t macro_a = (phase_a_us * 1000) / 2070;
+    uint32_t macro_b = (phase_b_us * 1000) / 2070;
+
+    uint16_t a_hi = ht_vl53l1x_encode_timeout(macro_a);
+    uint16_t b_hi = ht_vl53l1x_encode_timeout(macro_b);
+
+    uint8_t data_a[2] = { (uint8_t)(a_hi >> 8), (uint8_t)(a_hi & 0xFF)};
+    esp_err_t err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_A_HI, data_a, 2);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    uint8_t data_b[2] = { (uint8_t)(b_hi >> 8), (uint8_t)(b_hi & 0xFF)};
+    esp_err_t err = ht_i2c_write_reg16(dev->port, VL53L1X_ADDR, VL53L1X_REG_RANGE_CONFIG_TIMEOUT_MACROP_B_HI, data_b, 2);
+    return err;
+}
+
+static uint16_t ht_vl53l1x_encode_timeout(uint32_t timeout_macro_clks) {
+    uint32_t ls_byte = 0;
+    uint16_t ms_byte = 0;
+
+    if(timeout_macro_clks > 0) {
+        ls_byte = timeout_macro_clks - 1;
+        while ((ls_byte & 0xFFFFFF00) > 0) {
+            ls_byte = ls_byte >> 1;
+            ms_byte++;
+        }
+        return (ms_byte << 8) | (uint16_t)(ls_byte & 0xFF);
+    }
+    return 0;
 }
 
 static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev) {
