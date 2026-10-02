@@ -13,6 +13,27 @@ esp_err_t ht_i2c_bus_init(int sda_pin, int scl_pin, i2c_master_bus_handle_t *bus
     return i2c_new_master_bus(&conf, bus_handle);
 }
 
+void ht_i2c_scan(i2c_master_bus_handle_t bus_handle) {
+    printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
+    printf("00:         ");
+
+    for(uint8_t i = 3; i < 0x78; i++) {
+        if(i % 16 == 0) {
+            printf("\n%02x:", i);
+
+            esp_err_t err = i2c_master_probe(bus_handle, i, 100);
+
+            if(err == ESP_OK) {
+                printf(" %02x", i);
+            }
+            else {
+                printf(" --");
+            }
+        }
+        printf("\n\n");
+    }
+}
+
 esp_err_t ht_i2c_add_device(i2c_master_bus_handle_t bus_handle, uint8_t dev_addr, uint32_t clk_speed, i2c_master_dev_handle_t *dev_handle) {
     i2c_device_config_t conf = {
         .device_address = dev_addr,
@@ -40,12 +61,19 @@ esp_err_t ht_i2c_read_reg16(i2c_master_dev_handle_t dev_handle, uint16_t reg_add
     return i2c_master_transmit_receive(dev_handle, reg_buf, 2, data, len, -1);
 }
 
+esp_err_t ht_i2c_write_reg8(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, const uint8_t *data, size_t len) {
+    uint8_t write_buf[1 + len];
+    write_buf[0] = reg_addr;
 
+    for(int i = 0; i < len; i++) {
+        write_buf[i + 1] = data[i];
+    }
 
+    return i2c_master_transmit(dev_handle, write_buf, len + 1, -1);
+}
 
-
-
-
-
+esp_err_t ht_i2c_read_reg8(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t *data, size_t len) {
+    return i2c_master_transmit_receive(dev_handle, &reg_addr, 1, data, len, -1);
+}
 
 
