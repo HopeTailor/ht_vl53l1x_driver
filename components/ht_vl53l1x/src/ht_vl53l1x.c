@@ -9,8 +9,13 @@ static const uint8_t vl53l1x_default_configuration[91] = {
     0x00, 0x02, 0xC7, 0xFF, 0x9B, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00
 };
 
+static void delay_ms(uint32_t ms) {
+    TickType_t t = pdMS_TO_TICKS(ms);
+    vTaskDelay(t > 0 ? t : 1);
+}
+
 static esp_err_t wr8(ht_vl53l1x_dev_t *dev, uint16_t reg, uint8_t v) {
-    return ht_i2c_write_reg8(dev->i2c_dev, reg, &v, 1);
+    return ht_i2c_write_reg16(dev->i2c_dev, reg, &v, 1);
 }
 
 static esp_err_t wr16(ht_vl53l1x_dev_t *dev, uint16_t reg, uint16_t v) {
@@ -41,21 +46,6 @@ static esp_err_t ht_vl53l1x_set_distance_mode(ht_vl53l1x_dev_t *dev) {
         return ESP_ERR_INVALID_ARG;
     }
     return err;
-}
-
-static uint16_t ht_vl53l1x_encode_timeout(uint32_t timeout_macro_clks) {
-    uint32_t ls_byte = 0;
-    uint16_t ms_byte = 0;
-
-    if(timeout_macro_clks > 0) {
-        ls_byte = timeout_macro_clks - 1;
-        while ((ls_byte & 0xFFFFFF00) > 0) {
-            ls_byte = ls_byte >> 1;
-            ms_byte++;
-        }
-        return (ms_byte << 8) | (uint16_t)(ls_byte & 0xFF);
-    }
-    return 0;
 }
 
 static esp_err_t ht_vl53l1x_set_timing_budget(ht_vl53l1x_dev_t *dev) {
@@ -147,7 +137,7 @@ static esp_err_t ht_vl53l1x_set_inter_measurement(ht_vl53l1x_dev_t *dev) {
     uint16_t clock_pll = (uint16_t)(((osc[0] << 8) | osc[1]) & 0x3FF);
     uint32_t period = (uint32_t)(clock_pll * dev->inter_measurement_ms * 1.075f);
 
-    uint8_t data[4] = {(uint8_t)(period >> 24), (uint8_t)(period >> 16)< (uint8_t)(period >> 8), (uint8_t)(period & 0xFF)};
+    uint8_t data[4] = {(uint8_t)(period >> 24), (uint8_t)(period >> 16), (uint8_t)(period >> 8), (uint8_t)(period & 0xFF)};
     return ht_i2c_write_reg16(dev->i2c_dev, VL53L1X_REG_SYSTEM_INTERMEASUREMENT_PERIOD, data, 4);
 }
 
@@ -176,10 +166,10 @@ esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
         if(ht_i2c_read_reg16(dev->i2c_dev, VL53L1X_REG_FIRMWARE_SYSTEM_STATUS, &booted, 1) != ESP_OK) {
             booted = 0;
         }
-        if(++tries > 200) {
+        if(++tries > 100) {
             return ESP_ERR_TIMEOUT;
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
+        delay_ms(10);
     }
 
     for(uint16_t i = 0; i < sizeof(vl53l1x_default_configuration); i++) {
@@ -189,7 +179,7 @@ esp_err_t ht_vl53l1x_init(ht_vl53l1x_dev_t *dev) {
         return err;
     }
 
-    err = ht_vl53l1x_stop_ranging(dev);
+    err = ht_vl53l1x_start_ranging(dev);
     if(err != ESP_OK) {
         return err;
     }
